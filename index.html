@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS: ETERNAL - Ultimate Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Teko:wght@300;500;700&display=swap');
+
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Teko', sans-serif; cursor: none; user-select: none; }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
+        }
+
+        /* ETERNAL HUD */
+        #top-bar {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 1000px; height: 90px;
+            background: linear-gradient(90deg, transparent, rgba(5,5,5,0.95), transparent);
+            display: flex; justify-content: center; align-items: center;
+            color: #e5c100; font-family: 'Cinzel', serif; font-size: 42px; 
+            text-shadow: 0 0 30px #ffaa00; border-bottom: 3px solid #e5c100; letter-spacing: 12px;
+        }
+
+        #controls-hint {
+            position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+            color: #ccc; font-size: 16px; text-shadow: 1px 1px 3px #000;
+            background: rgba(0,0,0,0.7); padding: 8px 30px; border-radius: 30px;
+            border: 1px solid #444; font-family: 'Cinzel', serif;
+        }
+
+        #health-widget {
+            position: absolute; bottom: 50px; right: 50px;
+            text-align: right; transform: scale(1.1);
+        }
+        .bar-frame {
+            width: 400px; height: 28px; background: #0a0a0a; border: 2px solid #666;
+            margin-bottom: 12px; transform: skewX(-20deg); overflow: hidden; position: relative;
+            box-shadow: 8px 8px 25px rgba(0,0,0,0.95);
+        }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.1s ease-out; }
+        #hp-fill { background: linear-gradient(90deg, #500, #d00, #f66); box-shadow: 0 0 15px #f00; }
+        #horse-fill { background: linear-gradient(90deg, #640, #ea0, #ff5); box-shadow: 0 0 15px #ff0; }
+        #stamina-fill { background: linear-gradient(90deg, #040, #0a0, #5f5); box-shadow: 0 0 15px #0f0; width: 100%; }
+
+        #army-widget {
+            position: absolute; bottom: 50px; left: 50px;
+            background: linear-gradient(135deg, rgba(10,10,10,0.95), rgba(40,40,40,0.9)); 
+            padding: 30px; border-left: 8px solid #e5c100;
+            color: #fff; font-family: 'Cinzel', serif;
+            box-shadow: 10px 10px 40px rgba(0,0,0,0.8); transform: skewX(-5deg);
+        }
+
+        #log-area {
+            position: absolute; top: 200px; left: 40px;
+            width: 450px; max-height: 500px; overflow: hidden;
+            display: flex; flex-direction: column-reverse;
+        }
+        .log-msg {
+            background: linear-gradient(90deg, rgba(0,0,0,0.85), transparent); 
+            color: #eee; padding: 12px 20px; margin-top: 6px;
+            font-size: 18px; border-left: 5px solid #aaa; 
+            text-shadow: 1px 1px 2px #000; animation: slideIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40px; height: 40px; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+        }
+        .ch-part { position: absolute; background: rgba(255,255,255,0.8); box-shadow: 0 0 4px #000; }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+            color: #fff; cursor: pointer; text-align: center;
+            background: radial-gradient(circle, #2a2a2a 0%, #000 100%);
+        }
+        #overlay h1 { font-family: 'Cinzel', serif; font-size: 10rem; color: #e5c100; text-shadow: 0 0 80px #ff6600; margin: 0; letter-spacing: 25px; }
+        .btn { border: 4px solid #e5c100; padding: 25px 80px; font-size: 2.5rem; color: #e5c100; background: rgba(0,0,0,0.85); transition: 0.3s; font-family: 'Cinzel', serif; margin-top: 60px; box-shadow: 0 0 20px rgba(229, 193, 0, 0.2); }
+        .btn:hover { background: #e5c100; color: #000; box-shadow: 0 0 60px #e5c100; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1>ETERNAL</h1>
+        <p style="letter-spacing: 12px; font-size: 2rem; color: #aaa;">THE ULTIMATE WARFARE SIMULATION</p>
+        <div class="btn">EFSANEYİ YAZ</div>
+        <div style="margin-top: 50px; color: #777; font-size: 1.1rem; border-top: 1px solid #333; padding-top: 20px;">
+            WASD: Hareket | Shift: Koş | F: At Bin/İn | V: Kamera | Sol Tık: Kombo | Sağ Tık: Blok
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="top-bar">NEXUS: ETERNAL</div>
+        <div id="controls-hint">[F] Etkileşim | [Sağ Tık] Blok | [Sol Tık] Saldırı Kombosu</div>
+        <div id="log-area"></div>
+        
+        <div id="crosshair">
+            <div class="ch-part" style="width: 2px; height: 10px; top: 15px; left: 19px;"></div>
+            <div class="ch-part" style="width: 10px; height: 2px; top: 19px; left: 15px;"></div>
+        </div>
+        
+        <div id="army-widget">
+            <div style="font-size: 24px; color: #e5c100; margin-bottom: 10px; border-bottom: 2px solid #555; padding-bottom: 5px;">CEPHE HATTI</div>
+            <div id="army-count" style="font-size: 20px;">Kraliyet: 50 | İsyancılar: 50</div>
+        </div>
+
+        <div id="health-widget">
+            <div style="color:#fff; font-size:22px; margin-bottom:5px; font-family: 'Cinzel', serif;">CAN</div>
+            <div class="bar-frame"><div id="hp-fill" class="bar-fill"></div></div>
+            <div style="color:#fff; font-size:22px; margin-bottom:5px; font-family: 'Cinzel', serif;">KONDİSYON</div>
+            <div class="bar-frame" style="height: 12px; width: 300px; margin-left: 100px;"><div id="stamina-fill" class="bar-fill"></div></div>
+            <div id="horse-stat-container">
+                <div style="color:#fff; font-size:22px; margin-bottom:5px; font-family: 'Cinzel', serif; margin-top: 10px;">SAVAŞ ATI</div>
+                <div class="bar-frame"><div id="horse-fill" class="bar-fill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /** NEXUS ETERNAL ENGINE **/
+        
+        let scene, camera, renderer, clock = new THREE.Clock();
+        
+        // Groups
+        let playerGroup, knightModel, horseModel, weaponGroup, shieldGroup; 
+        let terrain, grassMesh;
+        
+        // State
+        let isMounted = true;
+        let keys = {}, isLocked = false;
+        let viewMode = 'TPS'; 
+        let camPitch = 0, camYaw = 0;
+        let shakeIntensity = 0;
+        
+        // Combat
+        let attackCombo = 0;
+        let lastAttackTime = 0;
+        let isBlocking = false;
+        
+        // Movement
+        let horseSpeed = 0, horseRot = 0;
+        let onFootRot = 0;
+
+        // Logic
+        const ARMY_SIZE = 50;
+        let enemies = [], allies = [], particles = [];
+        let stats = { hp: 100, maxHp: 100, horseHp: 100, stamina: 100, isAttacking: false, allyCount: ARMY_SIZE, enemyCount: ARMY_SIZE };
+
+        // Generated Textures Storage
+        const textures = {};
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.FogExp2(0x90b0c0, 0.0005); 
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 20000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.2)); // Kalite ve performans dengesi
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Gelişmiş Işıklandırma
+            const sun = new THREE.DirectionalLight(0xfff0dd, 2.0);
+            sun.position.set(1500, 3000, 1500);
+            sun.castShadow = true;
+            sun.shadow.mapSize.set(4096, 4096);
+            sun.shadow.camera.left = -4000; sun.shadow.camera.right = 4000;
+            sun.shadow.camera.top = 4000; sun.shadow.camera.bottom = -4000;
+            sun.shadow.bias = -0.0001;
+            scene.add(sun);
+            
+            const amb = new THREE.AmbientLight(0x505060, 0.5);
+            scene.add(amb);
+
+            // 1. DOKU SENTEZİ
+            generateAdvancedTextures();
+
+            // 2. DÜNYA İNŞASI
+            createEternalWorld();
+            
+            // 3. KARAKTER
+            createEternalPlayer();
+
+            // Girdiler
+            setupInputs();
+
+            // Ordu Spawn
+            for(let i=0; i<ARMY_SIZE; i++) spawnUnit(true);
+            for(let i=0; i<ARMY_SIZE; i++) spawnUnit(false);
+
+            animate();
+        }
+
+        // --- GÜRÜLTÜ VE DOKU MOTORU ---
+        function generateAdvancedTextures() {
+            const createTex = (w, h, fn) => {
+                const c = document.createElement('canvas'); c.width = w; c.height = h;
+                const ctx = c.getContext('2d'); fn(ctx, w, h);
+                const t = new THREE.CanvasTexture(c);
+                t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
+                return t;
+            };
+
+            // Noise Helper
+            const noise = (ctx, w, h, amount) => {
+                const id = ctx.getImageData(0,0,w,h);
+                const d = id.data;
+                for(let i=0; i<d.length; i+=4) {
+                    const v = (Math.random()-0.5)*amount;
+                    d[i]+=v; d[i+1]+=v; d[i+2]+=v;
+                }
+                ctx.putImageData(id, 0, 0);
+            };
+
+            // 1. Zırh (Çizikli ve Perçinli Metal)
+            textures.armor = createTex(512, 512, (ctx, w, h) => {
+                // Taban
+                const grad = ctx.createLinearGradient(0,0,w,h);
+                grad.addColorStop(0, '#555'); grad.addColorStop(1, '#777');
+                ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+                
+                // Gürültü
+                noise(ctx, w, h, 30);
+
+                // Perçinler
+                ctx.fillStyle = '#222';
+                for(let x=20; x<w; x+=60) {
+                    for(let y=20; y<h; y+=60) {
+                        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+                        // Parlama
+                        ctx.beginPath(); ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.arc(x-2, y-2, 2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='#222';
+                    }
+                }
+                // Çizikler
+                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+                for(let i=0; i<50; i++) {
+                    ctx.beginPath(); ctx.moveTo(Math.random()*w, Math.random()*h); 
+                    ctx.lineTo(Math.random()*w, Math.random()*h); ctx.stroke();
+                }
+            });
+
+            // 2. Zincir Zırh (Chainmail)
+            textures.mail = createTex(256, 256, (ctx, w, h) => {
+                ctx.fillStyle = '#111'; ctx.fillRect(0,0,w,h);
+                ctx.strokeStyle = '#666'; ctx.lineWidth = 2;
+                for(let y=0; y<h; y+=8) {
+                    for(let x=0; x<w; x+=8) {
+                        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(x+4, y+4, 4, 0, Math.PI*2); ctx.stroke();
+                    }
+                }
+            });
+
+            // 3. Zemin (Kompleks Çamur/Çim)
+            textures.ground = createTex(1024, 1024, (ctx, w, h) => {
+                ctx.fillStyle = '#2e3a23'; ctx.fillRect(0,0,w,h);
+                // Çim kümeleri
+                for(let i=0; i<10000; i++) {
+                    ctx.fillStyle = Math.random()>0.5 ? '#3e4a2e' : '#1e2a13';
+                    const x = Math.random()*w, y = Math.random()*h;
+                    ctx.fillRect(x, y, 3, 3);
+                }
+                noise(ctx, w, h, 20);
+            });
+
+            // 4. At Derisi (Kıl detaylı)
+            textures.horse = createTex(512, 512, (ctx, w, h) => {
+                ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0,0,w,h);
+                noise(ctx, w, h, 15);
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                for(let i=0; i<5000; i++) {
+                    ctx.fillRect(Math.random()*w, Math.random()*h, 1, 2);
+                }
+            });
+        }
+
+        // --- DÜNYA İNŞASI ---
+        function createEternalWorld() {
+            const geo = new THREE.PlaneGeometry(15000, 15000, 256, 256);
+            const pos = geo.attributes.position.array;
+            
+            for(let i=0; i<pos.length; i+=3) {
+                const x = pos[i], y = pos[i+1];
+                let h = 0;
+                h += Math.sin(x*0.0005)*Math.cos(y*0.0005)*100; // Büyük dağlar
+                h += Math.sin(x*0.002 + y*0.001)*20; // Tepeler
+                h += (Math.random()-0.5)*2; // Mikro gürültü
+                pos[i+2] = h;
+            }
+            geo.computeVertexNormals();
+
+            const mat = new THREE.MeshStandardMaterial({ 
+                map: textures.ground, roughness: 1, metalness: 0 
+            });
+            terrain = new THREE.Mesh(geo, mat);
+            terrain.rotation.x = -Math.PI/2;
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+
+            // Devasa Çim Sistemi (Instanced)
+            const grassGeo = new THREE.PlaneGeometry(0.8, 1.6);
+            const grassMat = new THREE.MeshBasicMaterial({ map: textures.ground, color: 0x668855, side: THREE.DoubleSide });
+            // Rengi biraz açalım
+            grassMesh = new THREE.InstancedMesh(grassGeo, grassMat, 60000);
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<60000; i++) {
+                const r = 4000 * Math.sqrt(Math.random());
+                const theta = Math.random() * 2 * Math.PI;
+                dummy.position.set(r*Math.cos(theta), 1, r*Math.sin(theta));
+                dummy.rotation.y = Math.random() * Math.PI;
+                dummy.scale.setScalar(0.8 + Math.random());
+                dummy.updateMatrix();
+                grassMesh.setMatrixAt(i, dummy.matrix);
+            }
+            scene.add(grassMesh);
+
+            // Çevre Süslemeleri (Kaya, Ağaç - Kodla üretilmiş modeller)
+            addDecorations();
+        }
+
+        function addDecorations() {
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x555, map: textures.armor }); // Taş için zırh dokusu (gri gürültü) iş görür
+            const rockGeo = new THREE.DodecahedronGeometry(1);
+            const rocks = new THREE.InstancedMesh(rockGeo, rockMat, 1000);
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<1000; i++) {
+                dummy.position.set((Math.random()-0.5)*5000, 0, (Math.random()-0.5)*5000);
+                dummy.rotation.set(Math.random(), Math.random(), Math.random());
+                dummy.scale.setScalar(2 + Math.random()*5);
+                dummy.updateMatrix();
+                rocks.setMatrixAt(i, dummy.matrix);
+            }
+            scene.add(rocks);
+        }
+
+        // --- OYUNCU İNŞASI (100x MODEL DETAYI) ---
+        function createEternalPlayer() {
+            playerGroup = new THREE.Group();
+            scene.add(playerGroup);
+
+            // Materyaller
+            const matPlate = new THREE.MeshStandardMaterial({ map: textures.armor, metalness: 0.8, roughness: 0.3 });
+            const matMail = new THREE.MeshStandardMaterial({ map: textures.mail, metalness: 0.5, roughness: 0.6 });
+            const matCloth = new THREE.MeshStandardMaterial({ color: 0x800000, roughness: 1 });
+            const matGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1, roughness: 0.2 });
+
+            // --- AT ---
+            horseModel = new THREE.Group();
+            const matHorse = new THREE.MeshStandardMaterial({ map: textures.horse, roughness: 0.8 });
+            
+            // At Gövdesi (Segmentli)
+            const hMain = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.5, 3.2), matHorse);
+            hMain.position.y = 1.6; horseModel.add(hMain);
+            
+            // At Zırhı (Caparison)
+            const caparison = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.2, 3.3), matCloth);
+            caparison.position.y = 1.6; horseModel.add(caparison);
+
+            // Boyun
+            const hNeck = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.4, 1.2), matHorse);
+            hNeck.position.set(0, 2.8, 2); hNeck.rotation.x = -0.5; horseModel.add(hNeck);
+            
+            // Kafa ve Dizgin
+            const hHead = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.9), matHorse);
+            hHead.position.set(0, 3.8, 2.8); hHead.rotation.x = 0.3; horseModel.add(hHead);
+            const hReins = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 4, 12), new THREE.MeshStandardMaterial({color: 0x3e2723}));
+            hReins.position.set(0, 3.6, 2.5); hReins.rotation.x = 1.5; horseModel.add(hReins);
+
+            // Bacaklar (4 parça)
+            const legPos = [[0.5, 1.2], [-0.5, 1.2], [0.5, -1.2], [-0.5, -1.2]];
+            legPos.forEach(p => {
+                const l = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.6, 0.35), matHorse);
+                l.position.set(p[0], 0.8, p[1]); horseModel.add(l);
+            });
+
+            scene.add(horseModel);
+
+            // --- ŞÖVALYE ---
+            knightModel = new THREE.Group();
+
+            // Gövde (Plaka + Zincir)
+            const kBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.45, 1.3, 8), matPlate);
+            kBody.position.y = 1.3; knightModel.add(kBody);
+            
+            // Etek (Mail Skirt)
+            const kSkirt = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.55, 0.6, 8), matMail);
+            kSkirt.position.y = 0.5; knightModel.add(kSkirt);
+
+            // Omuzluklar (Pauldrons)
+            const pL = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), matPlate);
+            pL.position.set(-0.6, 1.8, 0); knightModel.add(pL);
+            const pR = pL.clone(); pR.position.x = 0.6; knightModel.add(pR);
+
+            // Kafa (Miğfer - Great Helm)
+            const kHelm = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 8), matPlate);
+            kHelm.position.y = 2.2; knightModel.add(kHelm);
+            // Süs (Crest)
+            const kCrest = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.6), matGold);
+            kCrest.position.set(0, 2.6, 0); knightModel.add(kCrest);
+            // Vizör
+            const kVisor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.4), matPlate);
+            kVisor.position.set(0, 2.2, 0.2); knightModel.add(kVisor);
+
+            // Kollar
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 1.2), matPlate);
+            armL.position.set(-0.7, 1.4, 0); armL.rotation.z = 0.2; knightModel.add(armL);
+            const armR = armL.clone(); armR.position.x = 0.7; armR.rotation.z = -0.2; knightModel.add(armR);
+
+            // SİLAH (Uzun Kılıç)
+            weaponGroup = new THREE.Group();
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.8, 0.04), matPlate);
+            blade.position.y = 1.4; weaponGroup.add(blade);
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.15), matGold);
+            weaponGroup.add(guard);
+            const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723}));
+            grip.position.y = -0.3; weaponGroup.add(grip);
+            const pommel = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1), matGold);
+            pommel.position.y = -0.7; weaponGroup.add(pommel);
+
+            weaponGroup.position.set(0.8, 1.2, 0.5);
+            weaponGroup.rotation.x = Math.PI/2;
+            knightModel.add(weaponGroup);
+
+            // KALKAN (Shield)
+            shieldGroup = new THREE.Group();
+            const shieldBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.1), matCloth);
+            shieldGroup.add(shieldBody);
+            const shieldRim = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.25, 0.08), matPlate);
+            shieldGroup.add(shieldRim);
+            
+            // Başlangıçta sırtta veya kolda olabilir, şimdilik sol kolda
+            shieldGroup.position.set(-0.8, 1.2, 0.4);
+            shieldGroup.rotation.y = Math.PI/2;
+            knightModel.add(shieldGroup);
+
+            playerGroup.add(knightModel);
+            updateMountState();
+        }
+
+        // --- MEKANİKLER ---
+        function setupInputs() {
+            window.onkeydown = (e) => {
+                keys[e.code] = true;
+                if(e.code === 'KeyF') toggleMount();
+                if(e.code === 'KeyV') toggleCamera();
+            };
+            window.onkeyup = (e) => keys[e.code] = false;
+            window.onmousedown = (e) => { 
+                if(e.button === 0) tryAttack();
+                if(e.button === 2) { isBlocking = true; animateBlock(true); }
+            };
+            window.onmouseup = (e) => {
+                if(e.button === 2) { isBlocking = false; animateBlock(false); }
+            };
+
+            document.getElementById('overlay').onclick = () => document.body.requestPointerLock();
+            document.addEventListener('pointerlockchange', () => {
+                isLocked = document.pointerLockElement === document.body;
+                document.getElementById('overlay').style.display = isLocked ? 'none' : 'flex';
+            });
+            document.addEventListener('mousemove', (e) => {
+                if(!isLocked) return;
+                const sens = 0.002;
+                if(isMounted) horseRot -= e.movementX * sens;
+                else { onFootRot -= e.movementX * sens; playerGroup.rotation.y = onFootRot; }
+                camPitch -= e.movementY * sens;
+                camPitch = Math.max(-1.2, Math.min(1.0, camPitch));
+            });
+        }
+
+        function toggleMount() {
+            if(isMounted) {
+                isMounted = false;
+                const offset = new THREE.Vector3(2, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), horseRot);
+                playerGroup.position.copy(horseModel.position).add(offset);
+                playerGroup.position.y = 0;
+                log("Attan inildi.", "#fff");
+            } else {
+                if(playerGroup.position.distanceTo(horseModel.position) < 5) {
+                    isMounted = true;
+                    log("Ata binildi.", "#fff");
+                }
+            }
+            updateMountState();
+        }
+
+        function updateMountState() {
+            if(isMounted) {
+                knightModel.position.set(0, 1.8, 0);
+                horseModel.add(knightModel);
+                playerGroup.visible = false;
+                document.getElementById('horse-stat-container').style.opacity = 1;
+            } else {
+                scene.add(knightModel);
+                playerGroup.add(knightModel);
+                playerGroup.visible = true;
+                knightModel.position.set(0, 0, 0);
+                knightModel.rotation.set(0,0,0);
+                document.getElementById('horse-stat-container').style.opacity = 0.3;
+            }
+        }
+
+        function toggleCamera() {
+            viewMode = viewMode === 'TPS' ? 'FPS' : 'TPS';
+            document.getElementById('crosshair').style.opacity = viewMode === 'FPS' ? 1 : 0;
+        }
+
+        function animateBlock(active) {
+            // Kalkan animasyonu
+            const targetRotZ = active ? Math.PI/4 : 0;
+            const targetPosX = active ? -0.4 : -0.8;
+            
+            // Tween yerine basit lerp animate loop içinde yapılabilir veya CSS transition gibi
+            // Anlık tepki için:
+            shieldGroup.position.x = targetPosX;
+            shieldGroup.rotation.z = targetRotZ;
+            shieldGroup.rotation.x = active ? -0.5 : 0;
+        }
+
+        function tryAttack() {
+            if(stats.isAttacking || stats.stamina < 10) return;
+            if(isBlocking) return;
+
+            stats.isAttacking = true;
+            stats.stamina -= 15;
+            
+            // Kombo Sistemi
+            const now = Date.now();
+            if(now - lastAttackTime < 800) attackCombo = (attackCombo + 1) % 3;
+            else attackCombo = 0;
+            lastAttackTime = now;
+
+            // Animasyon Tipi
+            let startRot = {x: weaponGroup.rotation.x, z: weaponGroup.rotation.z};
+            let endRot = {x: Math.PI/2, z: 0};
+            
+            // 0: Üstten, 1: Sağdan, 2: Soldan
+            if(attackCombo === 0) { // Üstten
+                weaponGroup.rotation.x = Math.PI/2 - 1; 
+                endRot.x = Math.PI/2 + 0.5;
+            } else if(attackCombo === 1) { // Sağdan
+                weaponGroup.rotation.z = -1;
+                weaponGroup.rotation.x = Math.PI/2;
+                endRot.z = 1.5;
+            } else { // Soldan
+                weaponGroup.rotation.z = 1;
+                weaponGroup.rotation.x = Math.PI/2;
+                endRot.z = -1.5;
+            }
+
+            let progress = 0;
+            const attackAnim = setInterval(() => {
+                progress += 0.1;
+                if(progress >= 1) {
+                    clearInterval(attackAnim);
+                    stats.isAttacking = false;
+                    // Reset
+                    weaponGroup.rotation.set(Math.PI/2, 0, 0);
+                    weaponGroup.position.set(0.8, 1.2, 0.5);
+                } else {
+                    // Hareket
+                    if(attackCombo === 0) weaponGroup.rotation.x += 0.2;
+                    else weaponGroup.rotation.z += (attackCombo===1 ? 0.3 : -0.3);
+                }
+            }, 16);
+
+            // Hasar Kontrolü
+            checkHit();
+        }
+
+        function checkHit() {
+            setTimeout(() => {
+                const range = 6;
+                const attackerPos = isMounted ? horseModel.position : playerGroup.position;
+                
+                // Shake effect start
+                
+                enemies.forEach((e, i) => {
+                    if(e.position.distanceTo(attackerPos) < range) {
+                        // Hit Stop
+                        // Basitçe hasar
+                        let dmg = 35 + (attackCombo * 10);
+                        if(isMounted && Math.abs(horseSpeed) > 0.5) dmg += 20; // Hız bonusu
+
+                        e.userData.hp -= dmg;
+                        
+                        // FX
+                        shakeIntensity = 0.5;
+                        createParticles(e.position, 10, 0x880000);
+                        
+                        if(e.userData.hp <= 0) {
+                            scene.remove(e);
+                            enemies.splice(i, 1);
+                            stats.enemyCount--;
+                            log(`Düşman biçildi! (${Math.floor(dmg)})`, "#ffaa00");
+                        } else {
+                            // Geri tepme
+                            e.translateZ(-1);
+                        }
+                    }
+                });
+            }, 150);
+        }
+
+        function createParticles(pos, count, color) {
+            const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const mat = new THREE.MeshBasicMaterial({color: color});
+            for(let i=0; i<count; i++) {
+                const m = new THREE.Mesh(geo, mat);
+                m.position.copy(pos);
+                m.position.x += (Math.random()-0.5);
+                m.position.y += (Math.random()-0.5) + 1.5;
+                m.position.z += (Math.random()-0.5);
+                m.userData.vel = new THREE.Vector3((Math.random()-0.5)*0.2, Math.random()*0.2, (Math.random()-0.5)*0.2);
+                scene.add(m);
+                particles.push(m);
+            }
+        }
+
+        function spawnUnit(isAlly) {
+            const u = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ map: textures.cloth, color: isAlly ? 0x2266aa : 0xaa2222 });
+            const plate = new THREE.MeshStandardMaterial({ map: textures.armor, metalness: 0.7 });
+
+            // Detaylı Asker Modeli
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.4, 0.45), mat);
+            body.position.y = 1.3; u.add(body);
+            
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.25), new THREE.MeshStandardMaterial({color: 0xffccaa}));
+            head.position.y = 2.1; u.add(head);
+            const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.35, 8), plate);
+            helm.position.y = 2.25; u.add(helm);
+
+            // Silah
+            const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.5), new THREE.MeshStandardMaterial({color: 0x442211}));
+            spear.rotation.x = 0.2; spear.position.set(0.5, 1.5, 0.5); u.add(spear);
+
+            u.position.set((Math.random()-0.5)*800, 0, (Math.random()-0.5)*800 + (isAlly ? 200 : -200));
+            u.userData = { isAlly, hp: 100, state: 'IDLE' };
+            
+            scene.add(u);
+            if(isAlly) allies.push(u); else enemies.push(u);
+        }
+
+        function log(msg, col) {
+            const d = document.createElement('div');
+            d.className = 'log-msg'; d.style.borderLeftColor = col; d.innerText = msg;
+            document.getElementById('log-area').prepend(d);
+        }
+
+        // --- ANA DÖNGÜ ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Stamina Regen
+            if(stats.stamina < 100 && !isBlocking && !stats.isAttacking) stats.stamina += 0.2;
+            document.getElementById('stamina-fill').style.width = stats.stamina + '%';
+
+            if(isLocked) {
+                // Shake decay
+                if(shakeIntensity > 0) {
+                    shakeIntensity -= 0.05;
+                    camera.position.x += (Math.random()-0.5)*shakeIntensity;
+                    camera.position.y += (Math.random()-0.5)*shakeIntensity;
+                }
+
+                if(isMounted) {
+                    // AT FİZİĞİ
+                    if(keys['KeyW']) horseSpeed = THREE.MathUtils.lerp(horseSpeed, keys['ShiftLeft'] ? 1.8 : 0.8, 0.03);
+                    else if(keys['KeyS']) horseSpeed = THREE.MathUtils.lerp(horseSpeed, -0.4, 0.05);
+                    else horseSpeed = THREE.MathUtils.lerp(horseSpeed, 0, 0.02);
+
+                    if(keys['KeyA']) horseRot += 0.03;
+                    if(keys['KeyD']) horseRot -= 0.03;
+
+                    horseModel.rotation.y = horseRot;
+                    horseModel.translateZ(horseSpeed);
+                    
+                    // Animasyon: Atın koşması
+                    if(Math.abs(horseSpeed)>0.1) {
+                        const t = Date.now()*0.018;
+                        horseModel.rotation.x = Math.sin(t)*0.08;
+                        horseModel.position.y = Math.abs(Math.sin(t))*0.35;
+                        knightModel.position.y = 1.8 + Math.sin(t + Math.PI)*0.05;
+                    }
+
+                    // Kamera
+                    const tHeight = viewMode==='TPS' ? 5 : 4.8;
+                    const target = horseModel.position.clone().add(new THREE.Vector3(0, tHeight, 0));
+                    
+                    if(viewMode==='TPS') {
+                        const dist = 10 + (horseSpeed*4);
+                        const off = new THREE.Vector3(0, 5+camPitch*6, -dist).applyAxisAngle(new THREE.Vector3(0,1,0), horseRot);
+                        camera.position.lerp(horseModel.position.clone().add(off), 0.15);
+                        camera.lookAt(target);
+                    } else { // FPS (Kafa)
+                        const headPos = horseModel.position.clone().add(new THREE.Vector3(0, 2.5, 0.5).applyAxisAngle(new THREE.Vector3(0,1,0), horseRot));
+                        camera.position.copy(headPos);
+                        const look = new THREE.Vector3(0,0,10).applyAxisAngle(new THREE.Vector3(1,0,0), camPitch).applyAxisAngle(new THREE.Vector3(0,1,0), horseRot);
+                        camera.lookAt(headPos.clone().add(look));
+                    }
+                } else {
+                    // YAYA FİZİĞİ
+                    const speed = keys['ShiftLeft'] ? 0.7 : 0.35;
+                    const dir = new THREE.Vector3();
+                    if(keys['KeyW']) dir.z += 1; if(keys['KeyS']) dir.z -= 1;
+                    if(keys['KeyA']) dir.x += 1; if(keys['KeyD']) dir.x -= 1;
+
+                    if(dir.length()>0) {
+                        dir.normalize().multiplyScalar(speed);
+                        const m = dir.applyAxisAngle(new THREE.Vector3(0,1,0), onFootRot);
+                        playerGroup.position.add(m);
+                        // Bobbing
+                        knightModel.position.y = Math.abs(Math.sin(Date.now()*0.01))*0.15;
+                    }
+
+                    const tPos = playerGroup.position.clone().add(new THREE.Vector3(0, 3, 0));
+                    if(viewMode==='TPS') {
+                        const off = new THREE.Vector3(0, 4+camPitch*5, -7).applyAxisAngle(new THREE.Vector3(0,1,0), onFootRot);
+                        camera.position.lerp(playerGroup.position.clone().add(off), 0.2);
+                        camera.lookAt(tPos);
+                    } else {
+                        camera.position.copy(playerGroup.position.clone().add(new THREE.Vector3(0, 3.2, 0)));
+                        const look = new THREE.Vector3(0,0,10).applyAxisAngle(new THREE.Vector3(1,0,0), camPitch).applyAxisAngle(new THREE.Vector3(0,1,0), onFootRot);
+                        camera.lookAt(camera.position.clone().add(look));
+                    }
+                }
+
+                // AI UPDATE
+                const pPos = isMounted ? horseModel.position : playerGroup.position;
+                
+                // Müttefikler
+                allies.forEach(a => {
+                    let target = enemies[0];
+                    if(target) {
+                        a.lookAt(target.position);
+                        if(a.position.distanceTo(target.position) > 3) a.translateZ(0.12);
+                    }
+                });
+
+                // Düşmanlar
+                enemies.forEach(e => {
+                    if(e.position.distanceTo(pPos) < 150) {
+                        e.lookAt(pPos);
+                        if(e.position.distanceTo(pPos) > 4) e.translateZ(0.12);
+                        else {
+                            if(Math.random() < 0.015 && !isBlocking) {
+                                stats.hp -= 2; document.getElementById('hp-fill').style.width = stats.hp + '%';
+                                shakeIntensity = 0.3;
+                                log("Hasar Alındı!", "#aa2222");
+                            } else if(isBlocking && Math.random() < 0.02) {
+                                stats.stamina -= 5;
+                                log("Bloklandı!", "#aaa");
+                            }
+                        }
+                    }
+                });
+
+                // Particles
+                particles.forEach((p, i) => {
+                    p.position.add(p.userData.vel);
+                    p.scale.subScalar(0.02);
+                    if(p.scale.x <= 0) { scene.remove(p); particles.splice(i, 1); }
+                });
+
+                if(stats.hp <= 0) location.reload();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+    </script>
+</body>
+</html>
+
+
+BU KOD KNASIL GELİTŞRİLİR
